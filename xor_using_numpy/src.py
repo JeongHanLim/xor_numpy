@@ -1,10 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
-input_size = 100 #4
-output_size = 10 #3
-hidden_size = 50 #5
-num_examples = 100
+hidden_size = 4
+
+
 # As Y = XW + b
 # size of X is (data_num * data_size)
 # size of W is (data_size * hidden_size)
@@ -13,104 +11,99 @@ num_examples = 100
 # As we could set b by zero, my decision is that even if b sets random,
 # performance of Neural Network would not be changed.
 
-### INITILIZATION OF PARAMETERS ===================
-W1 = np.random.randn(input_size, hidden_size)
-b1 = np.random.randn(1, hidden_size)
-W2 = np.random.randn(hidden_size, output_size)
-b2 = np.random.randn(1, output_size)
 
 ### GENERATION OF DATA ============================
 
 # Making data based on Y = 2X + 1
 # target Y has some bias, from 0 ~ 1 distributed normal.
-def make_data(num_examples, output_size):
-    x = np.random.randn(num_examples, input_size)*5
-    y = np.zeros((num_examples, output_size))
+def make_data():
+    data = []
+    for x1 in range(2):
+        for x2 in range(2):
+            data.append([x1, x2])
+    data = np.asarray(data, dtype = np.int32)
+    """
+    input1 input2 | label 
+    [0]      [0]  |  [1]
+    [0]      [1]  |  [0]
+    [1]      [0]  |  [0]
+    [1]      [1]  |  [1] 
 
-    for i in range(num_examples):
-        for j in range(output_size):
-            y[i][j] = 2*x[i, j] + 1 + np.random.normal()
-    return x, y
+    """
+    label = np.logical_xor(data[:, 0], data[:, 1])
+    return data, label
 
 
 ### MODEL DEFINITION ============================
 
 # We define two-layered model
-def model(input):
-    n1 = np.matmul(input, W1) + b1
-    sig1 = 1/(1+np.exp(n1))
+class model(object):
+    def __init__(self):
+        self.input = np.random.normal(loc = 0.1, scale = 0.05, size = (2, hidden_size))
+        self.hidden = np.random.normal(loc = 0.1, scale = 0.05, size = (hidden_size, hidden_size))
+        self.out = np.random.normal(loc = 0.1, scale = 0.05, size = (hidden_size, 1))
 
-    n2 = np.matmul(sig1, W2) + b2
-    sig2 = 1/(1+np.exp(n2))
-    return sig1, sig2
+        self.z1 = None
+        self.z2 = None
 
-### LOSS DEFINITION ============================
+    @staticmethod
+    def sigmoid(x):
+        return 1 / (np.exp(-x) + 1)
 
-def loss_cross_entropy(y_t, y_pred, output_size):
-    loss = 0
-    for i in range(output_size):
-        y_ti = y_t[:, i]
-        y_predi = y_pred[:, i]
+    def forward(self, x):
+        z1 = np.matmul(x, self.input)
+        z1 = self.sigmoid(z1)
+        self.z1 = z1
+        z2 = np.matmul(z1, self.hidden)
+        z2 = self.sigmoid(z2)
+        self.z2 = z2
+        z3 = np.matmul(z2, self.out)
+        y = self.sigmoid(z3)
 
-        loss_arr = y_ti*np.log(y_predi)-(1-y_ti)*np.log(1-y_predi)
-        loss -= loss_arr
-    return loss
+        return y
 
-### BACKPROPAGATION ===============================
-
-def backpro(x, hidden_pred, input_size, output_size, hidden_size):
-    grad = 0
-    #y_t: (100, 10)
-    # y_pred: (100, 10)
-    for i in range(output_size):
-        for j in range(hidden_size):
+    ### LOSS DEFINITION ============================
+    """
+    def loss_cross_entropy(y_t, y_pred, output_size):
+        loss = 0
+        for i in range(output_size):
             y_ti = y_t[:, i]
             y_predi = y_pred[:, i]
-            hidden_predj = hidden_pred[:, j]
-            grad = (y_predi - y_ti)*W2[j, i]*hidden_predj*(1-hidden_predj)
-            W2[:, j] -= grad
 
-    grad = 0
+            loss_arr = y_ti*np.log(y_predi)-(1-y_ti)*np.log(1-y_predi)
+            loss -= loss_arr
+        return loss
+    """
 
-    for i in range(output_size):
-        for j in range(hidden_size):
-            for k in range(input_size):
-                y_ti = y_t[:, i]
-                y_predi = y_pred[:, i]
-                hidden_predj = hidden_pred[:, j]
-                x_k = x[:, k]
-                grad = (y_predi - y_ti)*W1[j, i]*hidden_predj*(1-hidden_predj)*x_k
+    ### BACKPROPAGATION ===============================
 
-            W1[:, j] -= grad
+    def backward(self, y, y_pred, x):
+        y = y.reshape(-1, 1)
+        if ((y_pred - y).any != 0 or y_pred.any != 0 or (1 - y_pred).any != 0):
+            grad_out = (y_pred - y) / (y_pred * (1 - y_pred))
+            # print(y.shape)
+            # print((y_pred-y).shape)
+            # print(grad_out.shape)
+            # print(self.out.shape)
+            self.out += 0.01 * grad_out
 
+            grad_hidden = np.matmul(self.hidden, (y_pred - y))
+            self.hidden += 0.01 * grad_hidden
+
+            #        print(((y_pred-y)*self.out*self.hidden*(1-self.hidden)).shape)
+            #        print(x.shape)
+            #        print(self.input.shape)
+            grad_input = np.matmul((y_pred - y) * self.out * self.hidden * (1 - self.hidden), x)
+            grad_input = grad_input.reshape(2, 4)
+            self.input += 0.01 * grad_input
 
 
 ### MAIN ============================
 
 if __name__ == "__main__":
-    x, y_t = make_data(num_examples = num_examples, output_size = output_size)
-    epoch = 0
-    while(1):
-
-        hidden_pred, y_pred = model(x)
-
-        E = loss_cross_entropy(y_t, y_pred, output_size)
-        backpro(x, hidden_pred, input_size, output_size, hidden_size)
-        if(epoch%10==0):
-            print(epoch, "   ", np.mean(E))
-        if(epoch%20==0):
-            plt.scatter(x[:, :output_size], y_t)
-            plt.scatter(x[:, :output_size], y_pred)
-            plt.scatter(x[:, :output_size], 2*x[:, :output_size] + 1)
-
-            plt.show()
-        epoch += 1
-##VISUALIZE
-
-#plt.scatter(x[:, :output_size], model(x))
-#plt.scatter(x[:, :output_size], y)
-#plt.scatter(x[:, :output_size], 2*x[:, :output_size] + 1)
-#plt.show()
-
-## ANALYSIS
-
+    model = model()
+    data, label = make_data()
+    for _ in range(10000):
+        y_hat = model.forward(data)
+        model.backward(label, y_hat, data)
+    print(model.forward(data))
