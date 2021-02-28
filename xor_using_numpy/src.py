@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 input_size = 100 #4
 output_size = 10 #3
 hidden_size = 50 #5
-num_examples = 100
+num_examples = 1
 # As Y = XW + b
 # size of X is (data_num * data_size)
 # size of W is (data_size * hidden_size)
@@ -19,8 +19,8 @@ b1 = np.random.randn(1, hidden_size)
 W2 = np.random.randn(hidden_size, output_size)
 b2 = np.random.randn(1, output_size)
 
-### GENERATION OF DATA ============================
 
+### GENERATION OF DATA ============================
 # Making data based on Y = 2X + 1
 # target Y has some bias, from 0 ~ 1 distributed normal.
 def make_data(num_examples, output_size):
@@ -62,8 +62,8 @@ def backpro(x, hidden_pred, input_size, output_size, hidden_size):
     grad = 0
     #y_t: (100, 10)
     # y_pred: (100, 10)
-    for i in range(output_size):
-        for j in range(hidden_size):
+    for i in range(output_size): # 10
+        for j in range(hidden_size): # 50
             y_ti = y_t[:, i]
             y_predi = y_pred[:, i]
             hidden_predj = hidden_pred[:, j]
