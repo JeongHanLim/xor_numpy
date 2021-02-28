@@ -2,6 +2,8 @@ import numpy as np
 
 hidden_size = 4
 
+# Reference
+# http://jaejunyoo.blogspot.com/2017/01/backpropagation.html
 
 # As Y = XW + b
 # size of X is (data_num * data_size)
@@ -30,7 +32,8 @@ def make_data():
     [1]      [1]  |  [1] 
 
     """
-    label = np.logical_xor(data[:, 0], data[:, 1])
+#    label = np.logical_xor(data[:, 0], data[:, 1])
+    label = np.asarray([0, 1, 1, 0])
     return data, label
 
 
@@ -40,62 +43,40 @@ def make_data():
 class model(object):
     def __init__(self):
         self.input = np.random.normal(loc = 0.1, scale = 0.05, size = (2, hidden_size))
-        self.hidden = np.random.normal(loc = 0.1, scale = 0.05, size = (hidden_size, hidden_size))
-        self.out = np.random.normal(loc = 0.1, scale = 0.05, size = (hidden_size, 1))
+        self.hidden = np.random.normal(loc = 0.1, scale = 0.05, size = (hidden_size, 1))
 
         self.z1 = None
         self.z2 = None
+        self.wz1 = None
+        self.wz2 = None
 
     @staticmethod
     def sigmoid(x):
         return 1 / (np.exp(-x) + 1)
 
     def forward(self, x):
-        z1 = np.matmul(x, self.input)
-        z1 = self.sigmoid(z1)
+        self.wz1 = np.matmul(x, self.input)
+        z1 = self.sigmoid(self.wz1)
         self.z1 = z1
-        z2 = np.matmul(z1, self.hidden)
-        z2 = self.sigmoid(z2)
+
+        self.wz2 = np.matmul(z1, self.hidden)
+        z2 = self.sigmoid(self.wz2)
         self.z2 = z2
-        z3 = np.matmul(z2, self.out)
-        y = self.sigmoid(z3)
 
-        return y
+        return self.z2
 
-    ### LOSS DEFINITION ============================
-    """
-    def loss_cross_entropy(y_t, y_pred, output_size):
-        loss = 0
-        for i in range(output_size):
-            y_ti = y_t[:, i]
-            y_predi = y_pred[:, i]
-
-            loss_arr = y_ti*np.log(y_predi)-(1-y_ti)*np.log(1-y_predi)
-            loss -= loss_arr
-        return loss
-    """
 
     ### BACKPROPAGATION ===============================
 
     def backward(self, y, y_pred, x):
         y = y.reshape(-1, 1)
-        if ((y_pred - y).any != 0 or y_pred.any != 0 or (1 - y_pred).any != 0):
-            grad_out = (y_pred - y) / (y_pred * (1 - y_pred))
-            # print(y.shape)
-            # print((y_pred-y).shape)
-            # print(grad_out.shape)
-            # print(self.out.shape)
-            self.out += 0.01 * grad_out
+        grad_hidden = (self.hidden * (y_pred - y))
+        self.hidden += 0.01 * grad_hidden
 
-            grad_hidden = np.matmul(self.hidden, (y_pred - y))
-            self.hidden += 0.01 * grad_hidden
-
-            #        print(((y_pred-y)*self.out*self.hidden*(1-self.hidden)).shape)
-            #        print(x.shape)
-            #        print(self.input.shape)
-            grad_input = np.matmul((y_pred - y) * self.out * self.hidden * (1 - self.hidden), x)
-            grad_input = grad_input.reshape(2, 4)
-            self.input += 0.01 * grad_input
+#        grad_input = np.matmul((y_pred - y) * self.out * self.hidden * (1 - self.hidden), x)
+        for k in range(2):
+            for i in range(1):
+                self.input[k, :] += np.matmul((y_pred - y)*self.wz2[:, i]*self.z1*(1-self.z1), x[:, k])
 
 
 ### MAIN ============================
@@ -103,7 +84,17 @@ class model(object):
 if __name__ == "__main__":
     model = model()
     data, label = make_data()
+    for _ in range(1):
+        y_hat = model.forward(data)
+        model.backward(label, y_hat, data)
+    print("training     1 time, accuracy equals\n" , model.forward(data))
+    for _ in range(100):
+        y_hat = model.forward(data)
+        model.backward(label, y_hat, data)
+    print("training  5000 time, accuracy equals\n", model.forward(data))
     for _ in range(10000):
         y_hat = model.forward(data)
         model.backward(label, y_hat, data)
-    print(model.forward(data))
+    print("training 10000 time, accuracy equals\n", model.forward(data))
+
+
